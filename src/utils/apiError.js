@@ -13,8 +13,8 @@ class ApiError extends Error{
          
         // utni jarurat nahi lekin production me use hota hai
 
-        if(statck){
-            this.stack=statck
+        if(stack){
+            this.stack=stack
         }else{
             Error.captureStackTrace(this,this.constructor)
         }
