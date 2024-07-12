@@ -3,14 +3,14 @@ class ApiError extends Error{
         statusCode,
         message="Something went wrong", // bekar message hai mat likhna
         error=[], // error ka array bhejne ke liye
-        statck=""
+        stack=""
     ){
         super(message)
         this.statusCode=statusCode
         this.data=null
         this.message=message
         this.success=false
-         
+        this.errors=error
         // utni jarurat nahi lekin production me use hota hai
 
         if(stack){
@@ -18,7 +18,7 @@ class ApiError extends Error{
         }else{
             Error.captureStackTrace(this,this.constructor)
         }
-    }
+    } 
 }
 
 

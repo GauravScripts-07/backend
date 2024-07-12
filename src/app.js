@@ -13,7 +13,7 @@ app.use(express.json({limit:"10kb"}))
 app.use(express.urlencoded({extended:true , limit: "10kb"}))
 app.use(express.static("public"))
 app.use(cookieParser())
-
+app.use(express.json());
 
 
 
@@ -21,6 +21,7 @@ app.use(cookieParser())
 import userRouter from './routes/user.routes.js'
 
 // router declaration
-app.use("api/v1/users",userRouter)
+app.use("api/v1/users/register",userRouter)
 
-export {app}
+  
+export {app} 
