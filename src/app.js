@@ -19,9 +19,10 @@ app.use(express.json());
 
 // importing router
 import userRouter from './routes/user.routes.js'
-
+// import { ApiError } from "./utils/apiError.js";
+// app.use(ApiError)
 // router declaration
-app.use("api/v1/users/register",userRouter)
+app.use("api/v1/users",userRouter)
 
   
 export {app} 
