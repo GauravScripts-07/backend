@@ -5,12 +5,6 @@ const asyncHandler = (requestHandler) => {
 
 export {asyncHandler}
 
-
-
-
-
-
-
 // const asyncHandler = (func) => async(err,req,res,next)=>{
 //     try{
 //         await func(err,req,res,next)

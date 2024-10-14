@@ -4,7 +4,7 @@ import { app } from "./app.js";
 
 
 dotenv.config({
-    path:'./env'
+    path:'./.env'
 })
 
 
@@ -32,16 +32,6 @@ connectDB()
 
 
 
-
-
-
-
-
-
-
-
-
-
 // function connectDB(){
 
 // }
@@ -49,8 +39,6 @@ connectDB()
 // connectDB();
 
 // immediately invoked function
-
-
 
 
 
