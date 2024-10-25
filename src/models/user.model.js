@@ -1,10 +1,10 @@
-import mongoose , {Schema} from "mongoose";
+import {mongoose , Schema} from "mongoose";
 
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 
 
-const userSchema=new Schema(
+const userSchema = new Schema(
     {
         username:{
             type: String,
@@ -55,16 +55,27 @@ const userSchema=new Schema(
     }
 )
 
-userSchema.pre("save",async function (next) {
-    if(!this.isModified("password")) return next();
-    this.password= await bcrypt.hash(this.password,8)
-    next()
-})
+userSchema.pre("save", async function (next) {
+    if (!this.isModified("password")) return next();
+    
+    try {
+        this.password = await bcrypt.hash(this.password, 8);
+        next();
+    } catch (error) {
+        next(error); // Pass the error to the next middleware
+    }
+});
 
 
-userSchema.methods.isPasswordCorrect= async function (password){
-    return await bcrypt.compare(password,this.password )
-}
+
+userSchema.methods.isPasswordCorrect = async function (password) {
+    try {
+        return await bcrypt.compare(password, this.password);
+    } catch (error) {
+        throw new Error("Password comparison failed");
+    }
+};
+
 
 userSchema.methods.generateAccessToken = function (){
     return jwt.sign(
@@ -83,7 +94,7 @@ userSchema.methods.generateAccessToken = function (){
     )
 }
 
-userSchema.methods.generateRefreshhToken = function (){
+userSchema.methods.generateRefreshToken = function (){
     return jwt.sign(
         {
             _id : this._id,
