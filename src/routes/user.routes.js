@@ -5,7 +5,7 @@ import {verifyJWT} from "../middlewares/auth.middleware.js"
 import {refreshAccessToken} from "../controllers/user.controller.js"
 const router = Router();
 
-router.route("/register").post(
+router.route("/register").post(  // post me 2 parameter de rahe 1-> action if anything. 2-> route name
     upload.fields([
         {
             name: "avatar",

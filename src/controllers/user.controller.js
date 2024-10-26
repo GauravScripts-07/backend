@@ -34,8 +34,8 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 }
 
 
-//mongodb on laptop mishra acount on email
-// cloudinary on gaurav account of laptop using google login
+
+//register controller to register user
 const registerUser = asyncHandler ( async (req , res ) => {
     // res.status(200).json({
     //     message: "Ok This user registration has successfully done.."
@@ -110,6 +110,10 @@ const registerUser = asyncHandler ( async (req , res ) => {
     )
 })
 
+
+
+
+
 // login A user and sending cookies 
 const loginUser = asyncHandler (async (req , res )=>{
     // req body -> data
@@ -144,11 +148,14 @@ const {accessToken,refreshToken} = await generateAccessTokenAndRefreshToken(user
 
 //optional step
 const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+// to send cookies 
 const options = {
-        httpOnly: true,
+        httpOnly: true, // cookies are modified by frontend also, to modifiy it from server only we use these options
         secure: true
     }
     
+    // sending cookies
     return res.status(200)
     .cookie("refreshToken",refreshToken,options)
     .cookie("accessToken",accessToken,options)
@@ -162,11 +169,14 @@ const options = {
     )
 })
 
-// logout user
 
+
+
+
+// logout user 
 const logoutUser = asyncHandler(async(req,res)=>{
      await User.findByIdAndUpdate(
-        req.user._id,
+        req.user?._id,
         {
             $set:{
                 refreshToken:undefined
@@ -188,6 +198,10 @@ const logoutUser = asyncHandler(async(req,res)=>{
     .json(new ApiResponse(200,{},"user logged out"))
 })
 
+
+
+
+//Access token validation and refreshing for user
 const refreshAccessToken = asyncHandler(async(req , res )=>{
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
     if (!incomingRefreshToken) {
@@ -227,10 +241,193 @@ const refreshAccessToken = asyncHandler(async(req , res )=>{
     throw new ApiError(401, error?.message || "Invalid refresh token")
    }
 })
+
+
+//update detais controllers ----------------
+
+
+const changePassword = asyncHandler( async(req , res )=>{
+    const {oldPassowrd , newPassword } = req.body;
+    const user = await User.findById(req.user?._id)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassowrd)
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(400,"Invalid Password")
+    }
+
+    user.password =  newPassword
+    await user.save({validateBeforeSave : false })
+
+    return res.
+    status(200)
+    .json(new ApiResponse(200, {} , "Password changed successfully"))
+})
+
+const getcurrentUser = asyncHandler( async(req , res)=> {
+    return res.
+    status(200)
+    .json(new ApiResponse(200 , req.user , "current user fetched successfully")) 
+})
+
+const updateUserDetails = asyncHandler( async(req ,res) =>{
+    const {fullName , email} = req.body
+    if (!( fullName || email )) {
+        throw new ApiError(400,"All fields are required")
+    }
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: { // aggregation, set recieves an object and we give it a parameter
+                fullName,
+                email
+
+            }
+        },
+        {new : true} // return the information after update
+    ).select("-password")
+
+    return res.
+    status(200)
+    .json(new ApiResponse(200, {user}, "Account details updated successfully"))
+})
+
+//updating Avatar
+const updateUserAvatar = asyncHandler (async (req,res)=>{
+    const avatarLocalPath = req.file?.path;
+    if (!avatarLocalPath) {
+        throw new ApiError(400,"Avatar file is missing")
+    }
+    const avatar = await UploadOnCloudinary(avatarLocalPath);
+    if (!avatar.url) {
+        throw new ApiError(400,"Error while uploading on cloudinary")
+    }
+
+    //updating details
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url
+            }
+        },
+        {new : true}
+    ).select("-password")
+
+    return res.
+    status(200)
+    .json( new ApiResponse(200, user , "Avatar updated successfully"))
+})
+
+//updating coverImage 
+
+const updateUserCoverImg = asyncHandler (async (req,res)=>{
+    const coverImgLocalPath = req.file?.path;
+    if (!coverImgLocalPath) {
+        throw new ApiError(400,"Avatar file is missing")
+    }
+    const coverImage = await UploadOnCloudinary(coverImgLocalPath);
+    if (!coverImage.url) {
+        throw new ApiError(400,"Error while uploading cover image on cloudinary")
+    }
+
+    //updating details
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage: coverImage.url
+            }
+        },
+        {new : true}
+    ).select("-password")
+
+    return res.
+    status(200)
+    .json( new ApiResponse(200, user , "cover image updated successfully"))
+})
+
+const getUserChannelProfile = asyncHandler( async (req, res)=>{
+    const {username} = req.params //this gets user from URL and not from body
+    if (!username?.trim()) {
+        throw new ApiError(400,"Username is missing in getUserChannelProfile methode")
+    }
+
+    // writing MongoDB aggregation
+
+    const channel = await User.aggregate([// takes an array then further objects
+        {
+            $match: {
+                username: username?.toLowerCase();
+            }
+        },
+        {
+            $lookup:{
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup:{
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields:{
+                subscribersCount:{
+                    $size: "$subscribers" //$ represents that it is a field so we can further add conditions
+                },
+                channelSubscribedToCount:{
+                    $size: "$subscribedTo"
+                },
+                isSubscribed:{
+                    $cond:{
+                        if{$in:[req.user?._id,"$subscribers.subscriber"]},  //$subscribers is field and subscriber is schema in mongoose model
+                        then:true,
+                        else:false
+                    }
+                }
+            }
+        },
+        {
+            $project:{  //projection for sending selected things and for that we put 1 for true flag
+                fullName:1,
+                username:1,
+                subscribersCount: 1,
+                channelSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar:1,
+                coverImage:1,
+                email:1
+            }
+
+        }
+    ]) 
+    console.log(channel)
+
+    if (!channel?.length) {
+        throw new ApiError(400,"Channel does not exists")
+    }
+
+    return res.
+    status(200)
+    .json(
+        new apiResponse(200, channel[0], "channel feteched successfully")
+    )
+})
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changePassword,
+    getcurrentUser,
+    updateUserDetails,
+    updateUserAvatar,
+    updateUserCoverImg
 
 }
