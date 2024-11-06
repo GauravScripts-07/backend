@@ -179,8 +179,8 @@ const logoutUser = asyncHandler(async(req,res)=>{
      await User.findByIdAndUpdate(
         req.user?._id,
         {
-            $set:{
-                refreshToken:undefined
+            $unset:{
+                refreshToken: 1
             }
         },
         {
@@ -215,12 +215,14 @@ const refreshAccessToken = asyncHandler(async(req , res )=>{
          process.env.REFRESH_TOKEN_SECRET
      )
  
-     const user = User.findById(decodedToken?._id)
+     const user = await User.findById(decodedToken?._id)
      if (!user) {
          throw new ApiError(404,"Invalid refresh token")
      }
+     //const OldRefreshtoken = user.refreshToken
      if (incomingRefreshToken !== user?.refreshToken) {
          throw new ApiError(401,"Refresh token is expired or used ")
+         
      }
      const options = {
          httpOnly: true,
@@ -248,10 +250,19 @@ const refreshAccessToken = asyncHandler(async(req , res )=>{
 
 
 const changePassword = asyncHandler( async(req , res )=>{
-    const {oldPassowrd , newPassword } = req.body;
-    const user = await User.findById(req.user?._id)
-    const isPasswordCorrect = await user.isPasswordCorrect(oldPassowrd)
+    const {oldPassword , newPassword } = req.body
+    //const oldPassowrd = req.body 
+    console.log(oldPassword);
+    console.log(newPassword);
+    
+    if (!(newPassword && oldPassword)) {
+        throw new ApiError(400, "Old Password and New passowrd both are required ")
+    }
 
+    const user = await User.findById(req.user?._id)
+    //console.log(user);
+    
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
     if (!isPasswordCorrect) {
         throw new ApiError(400,"Invalid Password")
     }
@@ -308,14 +319,14 @@ const updateUserAvatar = asyncHandler (async (req,res)=>{
         req.user?._id,
         {
             $set: {
-                avatar: avatar.url
+                avatar: avatar?.url
             }
         },
         {new : true}
     ).select("-password")
 
-    return res.
-    status(200)
+    return res
+    .status(200)
     .json( new ApiResponse(200, user , "Avatar updated successfully"))
 })
 
@@ -389,7 +400,7 @@ const getUserChannelProfile = asyncHandler( async (req, res)=>{
                 },
                 isSubscribed:{
                     $cond:{
-                        if{$in:[req.user?._id,"$subscribers.subscriber"]},  //$subscribers is field and subscriber is schema in mongoose model
+                        if:{$in:[req.user?._id,"$subscribers.subscriber"]},  //$subscribers is field and subscriber is schema in mongoose model
                         then:true,
                         else:false
                     }
@@ -419,54 +430,60 @@ const getUserChannelProfile = asyncHandler( async (req, res)=>{
     return res.
     status(200)
     .json(
-        new apiResponse(200, channel[0], "channel feteched successfully")
+        new ApiResponse(200, channel[0], "channel feteched successfully")
     )
 })
 
-const getWatchHistory =  asyncHandler( async (req,res) => {
-    const user = await User.aggregate([
-        {
-            $match:{
-                _id: new mongoose.Types.ObjectId("req.user._id")
+const getWatchHistory = asyncHandler(async (req, res) => {
+    try {
+        const user = await User.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(req.user._id) // Remove quotes
+                }
             },
-            $lookup:{
-                from:"videos",
-                localField:"watchHistory",
-                foreignField:"_id",
-                as:"watchHistory",
-                pipeline: [
-                    {
-                        $lookup:{
-                            from:"users"
-                            localField:"owner",
-                            foreignField:"_id",
-                            as:"owner",
-                            pipeline: [
-                                {
-                                    $project:{
-                                        fullName:1,
-                                        username:1,
-                                        avatar:1
-                                    }
-                                },
-                                {
-                                    $addFields:{
-                                        owner:{
-                                            $first:"$owner"
+            {
+                $lookup: {
+                    from: "videos",
+                    localField: "watchHistory",
+                    foreignField: "_id",
+                    as: "watchHistory",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "owner",
+                                foreignField: "_id",
+                                as: "owner",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            fullName: 1,
+                                            username: 1,
+                                            avatar: 1
                                         }
                                     }
-                                }
-                            ]
+                                ]
+                            }
+                        },
+                        {
+                            $unwind: { // Unwind to make owner a single object instead of an array
+                                path: "$owner",
+                                preserveNullAndEmptyArrays: true
+                            }
                         }
-                    }
-                ]
+                    ]
+                }
             }
-        }
-    ])
-    return res
-    .status(200)
-    .json(new ApiResponse(200,user[0].watchHistory,"Watch history getched successfully"))
-})
+        ]);
+
+        return res.status(200).json(new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully"));
+    } catch (error) {
+        return res.status(500).json(new ApiResponse(500, null, "Error fetching watch history"));
+    }
+});
+
+
 export {
     registerUser,
     loginUser,

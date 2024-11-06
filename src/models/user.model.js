@@ -69,10 +69,14 @@ userSchema.pre("save", async function (next) {
 
 
 userSchema.methods.isPasswordCorrect = async function (password) {
+    console.log(password)
+    //console.log(this.password)
     try {
-        return await bcrypt.compare(password, this.password);
+        const passCheck = await bcrypt.compare(password, this.password);
+        return passCheck;
+        
     } catch (error) {
-        throw new Error("Password comparison failed");
+        throw new Error("Password comparison failed",error);
     }
 };
 

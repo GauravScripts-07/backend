@@ -23,13 +23,13 @@ router.route("/login").post(loginUser)
 
 
 // secured route
-router.route("/logout").post(verifyJWT, logoutUser)
-router.route("/refresh-token").post(refreshAccessToken)
-router.route("/change-password").post(verifyJWT,changePassword)
-router.route("/current-user").get(verifyJWT,getCurrentUser)
-router.route("update-account").patch(verifyJWT,updateUserDetails)
-router.route("/avatar").patch(verifyJWT,upload.single("avatar"),updateUserAvatar)
-router.route("/cover-image").patch(verifyJWT,upload.singe("/coverImage"),updateUserCoverImg)
-router.route("/c/:username").get(verifyJWT,getUserChannelProfile) //since we are using params
-router.route("/history").get(verifyJWT,getWatchHistory)
+router.route("/logout").post(verifyJWT, logoutUser) //verified
+router.route("/refresh-token").post(refreshAccessToken) //verfied
+router.route("/change-password").post(verifyJWT,changePassword) //verified
+router.route("/current-user").get(verifyJWT,getCurrentUser) //verified
+router.route("/update-account").patch(verifyJWT,updateUserDetails) //verified
+router.route("/avatar").patch(verifyJWT,upload.single("avatar"),updateUserAvatar) //verfied
+router.route("/cover-image").patch(verifyJWT,upload.single("coverImage"),updateUserCoverImg) //verified
+router.route("/c/:username").get(verifyJWT,getUserChannelProfile) //since we are using params ,, verified
+router.route("/history").get(verifyJWT,getWatchHistory) // verified
 export default router 
